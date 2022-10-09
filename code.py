@@ -7,12 +7,15 @@ from adafruit_hid.keyboard import Keyboard
 from adafruit_hid.keyboard_layout_us import KeyboardLayoutUS
 import board
 import digitalio
+import mfrc522
+import busio
+
 # These are the corresponding GPIOs on the Pi Pico
 # that you soldered
 
-btn1_pin = board.GP4
-btn2_pin = board.GP3
-btn3_pin = board.GP2
+btn1_pin = board.GP16
+btn2_pin = board.GP15
+btn3_pin = board.GP14
 btn4_pin = board.GP8
 btn5_pin = board.GP7
 btn6_pin = board.GP6
@@ -65,11 +68,23 @@ led_red.direction = digitalio.Direction.OUTPUT
 led_blue = digitalio.DigitalInOut(board.GP19)
 led_blue.direction = digitalio.Direction.OUTPUT
 
-password_key1 = '1258'
-password_key2 = '1236'
+# RFID Reader Setting
+sck = board.GP2
+mosi = board.GP3
+miso = board.GP4
+spi = busio.SPI(sck, MOSI=mosi, MISO=miso)
 
-password1 = "dkfxkqks0&"
-password2 = "Dkfxkqks0("
+cs = digitalio.DigitalInOut(board.GP1)
+rst = digitalio.DigitalInOut(board.GP0)
+rfid = mfrc522.MFRC522(spi, cs, rst)
+rfid.set_antenna_gain(0x07 << 4)
+
+password1 = "password1\n"
+password2 = "password2(\n"
+password_git = "password3\n"
+password_one_pass = "password4\n"
+
+licensed_rfids = ['73065136', '07d16a92', 'd12e7365', 'c332ddc7'] 
 
 def blink_red(s=0.1, t=1):
     for x in range(t):
@@ -78,12 +93,14 @@ def blink_red(s=0.1, t=1):
         led_red.value = False
         time.sleep(s)
 
+
 def blink_blue(s=0.1, t=1):
     for x in range(t):
         led_blue.value = True
         time.sleep(s)
         led_blue.value = False
         time.sleep(s)
+    
     
 def get_press_one():
     key = -1
@@ -137,31 +154,71 @@ def is_valid_password(password):
     return True
 
 
+def licensed_rfid():    
+    (status, tag_type) = rfid.request(rfid.REQALL)
+    if status == rfid.OK:
+        (status, raw_uid) = rfid.anticoll()
+
+        if status == rfid.OK:
+            rfid_data = "{:02x}{:02x}{:02x}{:02x}".format(raw_uid[0], raw_uid[1], raw_uid[2], raw_uid[3])
+    else:
+        rfid_data = ""
+    #if rfid_data != "":
+    #    print(rfid_data)
+    return rfid_data in licensed_rfids
+
+
+def check_rfid(timeout=3):
+    is_licensed = False
+    try:
+        led_blue.value = True
+        prev_time = time.monotonic()
+        while True:
+            if licensed_rfid():
+                is_licensed = True
+                break
+            now_time = time.monotonic()
+            if now_time - prev_time > timeout:
+                break
+            time.sleep(0.1)
+    finally:
+        led_blue.value = False
+    return is_licensed
+
+
 while True:
     if btn1.value: #1
         if btn9.value:
-            is_valid = is_valid_password(password_key1)
-            if is_valid:
-                layout.write(password1)
-                time.sleep(0.1)
+            if check_rfid():
+               layout.write(password1)
+               time.sleep(0.1)
         else:
             keyboard.send(Keycode.F1)
             time.sleep(0.1)
     if btn2.value: #2
         if btn9.value:
-            is_valid = is_valid_password(password_key2)
-            if is_valid:
-                layout.write(password1)
-                time.sleep(0.1)
+            if check_rfid():
+               layout.write(password2)
+               time.sleep(0.1)
         else:
             keyboard.send(Keycode.F2)
             time.sleep(0.1)
     if btn3.value: #3
-        keyboard.send(Keycode.F3)
-        time.sleep(0.1)
+        if btn9.value:
+            if check_rfid():
+               layout.write(password_git)
+               time.sleep(0.1)
+        else:
+            keyboard.send(Keycode.F3)
+            time.sleep(0.1)
     if btn4.value: #4
-        keyboard.send(Keycode.F4)
-        time.sleep(0.1)
+        if btn9.value:
+            if check_rfid():
+               layout.write(password_one_pass)
+               time.sleep(0.1)
+        else:
+            keyboard.send(Keycode.F4)
+            time.sleep(0.1)
     if btn5.value: #5
         keyboard.send(Keycode.F5)
         time.sleep(0.1)
@@ -176,6 +233,3 @@ while True:
         time.sleep(0.1)
     if btn9.value: #9
         pass
-        
-    #time.sleep(0.1)
-
