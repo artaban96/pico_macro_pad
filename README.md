@@ -3,7 +3,7 @@
 ![macro_pad_1_S](resources/macro_pad_1_S.jpg)
 ![macro_pad_2_S](resources/macro_pad_2_S.jpg)
 ![DSC04283_S](resources/DSC04283_S.JPG)
-![RFID-RC522](resources/RFID-RC522.JPG)
+![RFID-RC522](resources/RFID-RC522.jpg)
 
 ## 참고
 https://create.arduino.cc/projecthub/1Nex tPCB/how-to-build-a-pico-macro-pad-3638e6
